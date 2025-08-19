@@ -1,0 +1,73 @@
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector("#user_login_form");
+        if (!form) return;
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const success = await attachWalletSignature(form);
+            if (success) {
+                toastr.success("Wallet connected and verified!", "Logging in...");
+                setTimeout(() => form.submit(), 800);
+            }
+        });
+    });
+
+    async function attachWalletSignature(form) {
+        let web3;
+
+        if (typeof window.ethereum !== 'undefined') {
+            web3 = new Web3(window.ethereum);
+
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+            } catch (error) {
+                console.error('User denied wallet access:', error);
+                toastr.error('Wallet access denied by user.');
+                return false;
+            }
+        } else {
+            toastr.error("No wallet detected. Please use MetaMask or a BSC-compatible wallet.");
+            return false;
+        }
+
+        const chainId = await web3.eth.getChainId();
+        if (chainId !== 56) {
+            toastr.warning("Please switch to the Binance Smart Chain network (Chain ID: 56).");
+            return false;
+        }
+
+        try {
+            const accounts = await web3.eth.getAccounts();
+            const userAddress = accounts[0];
+
+            if (!userAddress) {
+                toastr.error("No wallet address available.");
+                return false;
+            }
+
+            const message = "Login verification - " + new Date().toISOString();
+
+            const signature = await web3.eth.personal.sign(message, userAddress, '');
+
+            form.appendChild(createHiddenInput('usdt_address', userAddress));
+            form.appendChild(createHiddenInput('signature', signature));
+            form.appendChild(createHiddenInput('signed_message', message));
+
+            return true;
+
+        } catch (error) {
+            console.error("Wallet signature failed:", error);
+            toastr.error("Signature failed: " + (error.message || "Unknown error"));
+            return false;
+        }
+    }
+
+    function createHiddenInput(name, value) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        return input;
+    }
+</script>
