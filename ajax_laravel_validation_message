@@ -1,0 +1,13 @@
+<?php
+
+$validator = Validator::make($request->all(), [
+      'enquery_id' => 'required|exists:enqueries,id',
+      'message' => 'required'
+  ]);
+
+  if ($validator->fails()) {
+      return response()->json([
+          'status' => 'error',
+          'message' => $validator->errors()->first()
+      ], 422);
+  }
